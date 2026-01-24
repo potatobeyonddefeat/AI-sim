@@ -1252,7 +1252,8 @@ class DQNAgent:
     def _build_model(self):
         """Build neural network for Q-learning"""
         model = models.Sequential([
-            layers.Dense(128, activation='relu', input_shape=(self.state_size,)),
+            layers.Input(shape=(self.state_size,)),
+            layers.Dense(128, activation='relu'),
             layers.Dropout(0.2),
             layers.Dense(128, activation='relu'),
             layers.Dropout(0.2),
@@ -1330,14 +1331,14 @@ class DQNAgent:
         self.update_target_model()
 
 
-def train_agent(episodes=100, max_days=1825, save_path='life_agent.h5'):
+def train_agent(episodes=100, max_days=1825, save_path='life_agent.weights.h5'):
     """
     Train DQN agent to play the life simulation
     
     Args:
         episodes: Number of lifetimes to simulate
         max_days: Maximum days per episode (5 years default)
-        save_path: Path to save trained model
+        save_path: Path to save trained model (must end with .weights.h5)
     """
     if not TF_AVAILABLE:
         print("TensorFlow not available. Cannot train agent.")
@@ -1506,7 +1507,7 @@ def train_example():
         print("TensorFlow not available. Install with: pip install tensorflow")
         return
     
-    agent = train_agent(episodes=100, max_days=1825, save_path='life_agent.h5')
+    agent = train_agent(episodes=100, max_days=1825, save_path='life_agent.weights.h5')
     
     if agent:
         print("\nEvaluating trained agent...")
