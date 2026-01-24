@@ -7,6 +7,7 @@ class LifeSimulation:
         if seed is not None:
             random.seed(seed)
         
+        # Starting state
         self.day = 0
         self.age = 25.0
         self.weight = 75.0
@@ -19,7 +20,6 @@ class LifeSimulation:
         self.has_job = self.monthly_income > 0
         self.job_stability = 100.0
         self.car_working = True
-        self.car_repair_needed = False
         self.car_repair_cost = 0
         self.sick = False
         self.sick_days_remaining = 0
@@ -51,14 +51,17 @@ class LifeSimulation:
         if not self.alive:
             return
             
+        # Advance time
         self.day += 1
         self.age += 1/365.0
         
+        # Daily living costs
         daily_cost = random.uniform(50, 90)
         if self.money < 1000:
             daily_cost = random.uniform(30, 60)
         self.money -= daily_cost
         
+        # Poverty penalties
         if self.money < 500:
             self.health -= 0.5
             self.happiness -= 1
@@ -66,9 +69,9 @@ class LifeSimulation:
             self.health -= 0.8
             self.happiness -= 3
         
+        # Monthly bills and debt
         if self.day % 30 == 1:
-            rent = 1400
-            self.money -= rent
+            self.money -= 1400
             
             if self.money < 0:
                 debt = abs(self.money)
@@ -81,11 +84,14 @@ class LifeSimulation:
                     self.cause_of_end = "Crushed by debt"
                     return
         
+        # Natural decline
         self.health -= 0.03
         self.happiness -= 0.15
         
+        # Energy recovery
         self.energy = min(100.0, self.energy + 45.0)
         
+        # Food intake and weight change
         target_weight = 75.0
         bmi_current = self.bmi()
         
@@ -106,10 +112,10 @@ class LifeSimulation:
         if self.sick:
             base_calories = int(base_calories * 0.5)
             
-        calories = base_calories
-        net_calories = calories - 2500
+        net_calories = base_calories - 2500
         self.weight += net_calories / 7700.0
         
+        # Exercise decision
         exercise_chance = 0.1
         if bmi_current > 28:
             exercise_chance += 0.4
@@ -126,6 +132,7 @@ class LifeSimulation:
             self.energy -= 40
             self.happiness += 2
         
+        # Work and job mechanics
         if self.has_job:
             if self.sick or (not self.car_working and random.random() < 0.6):
                 self.job_stability -= random.uniform(12, 25)
@@ -157,6 +164,7 @@ class LifeSimulation:
                     self.job_stability = 70
                     self.happiness += 20
         
+        # Illness progression
         if self.sick:
             self.sick_days_remaining -= 1
             self.health -= self.sickness_severity * 2.0
@@ -167,6 +175,7 @@ class LifeSimulation:
             if self.sick_days_remaining <= 0:
                 self.sick = False
                 
+        # Random events (mostly negative)
         event = random.random()
         if event < 0.025:
             self.sick = True
@@ -220,15 +229,18 @@ class LifeSimulation:
                 self.monthly_income += random.randint(500, 1500)
                 self.happiness += 10
         
+        # Car repair attempt
         if not self.car_working:
             if self.money > self.car_repair_cost + 3000 and random.random() < 0.3:
                 self.money -= self.car_repair_cost
                 self.car_working = True
         
+        # Death check
         if self.health <= 0:
             self.alive = False
             self.cause_of_end = "Death from poor health"
         
+        # Clamp values
         self.health = max(0.0, min(100.0, self.health))
         self.energy = max(0.0, min(100.0, self.energy))
         self.happiness = max(0.0, min(100.0, self.happiness))
@@ -247,6 +259,7 @@ def run_simulation(days=3650, seed=42):
     
     df = pd.DataFrame(sim.logs)
     
+    # Plot results
     fig, axs = plt.subplots(3, 2, figsize=(14, 12))
     fig.suptitle('Ultra-Ruthless AI Human Life Simulation', fontsize=16)
     
@@ -271,6 +284,7 @@ def run_simulation(days=3650, seed=42):
     plt.tight_layout()
     plt.show()
     
+    # Final summary
     final = df.iloc[-1] if not df.empty else None
     print("\n=== SIMULATION END ===")
     if final is not None:
