@@ -1,6 +1,15 @@
 import random
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+try:
+    import tensorflow as tf
+    from tensorflow import keras
+    from tensorflow.keras import layers, models, optimizers
+    TF_AVAILABLE = True
+except ImportError:
+    TF_AVAILABLE = False
+    print("TensorFlow not available. RL training features disabled.")
 
 class Person:
     def __init__(self, name, age, gender, relationship_type):
@@ -1053,3 +1062,456 @@ Total Reward: {sim.total_reward:.1f}
 
 if __name__ == "__main__":
     sim, df = run_simulation(days=1825, seed=None, verbose=False)  # 5 years
+
+# ========================================
+# REINFORCEMENT LEARNING TRAINING SECTION
+# ========================================
+
+class LifeEnvironment:
+    """Gym-like environment wrapper for the life simulation"""
+    
+    def __init__(self, seed=None):
+        self.sim = None
+        self.seed = seed
+        
+    def reset(self):
+        """Reset environment and return initial state"""
+        self.sim = LifeSimulation(seed=self.seed, verbose=False)
+        return self.get_state()
+    
+    def get_state(self):
+        """Get current state as numpy array for neural network"""
+        if not self.sim.alive or self.sim.in_jail:
+            # Return zeros for terminal state
+            return np.zeros(30)
+        
+        state = np.array([
+            self.sim.age / 100.0,  # Normalize to 0-1
+            self.sim.health / 100.0,
+            self.sim.mental_health / 100.0,
+            self.sim.happiness / 100.0,
+            self.sim.energy / 100.0,
+            min(self.sim.money / 50000.0, 1.0),  # Cap normalization
+            min(self.sim.debt / 50000.0, 1.0),
+            self.sim.weight / 200.0,
+            self.sim.bmi() / 50.0,
+            self.sim.job_stability / 100.0,
+            self.sim.skill_level / 5.0,
+            self.sim.social_support / 100.0,
+            1.0 if self.sim.has_job else 0.0,
+            1.0 if self.sim.car_working else 0.0,
+            1.0 if self.sim.sick else 0.0,
+            self.sim.alcohol_dependency / 100.0,
+            self.sim.drug_dependency / 100.0,
+            1.0 if self.sim.relationship_status == 'married' else 0.5 if self.sim.relationship_status == 'dating' else 0.0,
+            self.sim.relationship_satisfaction / 100.0,
+            len(self.sim.children) / 5.0,  # Normalize assuming max 5 kids
+            len([f for f in self.sim.family_members if f.alive]) / max(1, len(self.sim.family_members)),
+            len(self.sim.friends) / 10.0,
+            len(self.sim.criminal_record) / 10.0,
+            1.0 if self.sim.therapy else 0.0,
+            1.0 if self.sim.has_health_insurance else 0.0,
+            1.0 if self.sim.probation else 0.0,
+            1.0 if self.sim.license_suspended else 0.0,
+            self.sim.traffic_tickets / 10.0,
+            min(self.sim.investments / 50000.0, 1.0),
+            self.sim.day / 3650.0  # Normalize days (10 years max)
+        ], dtype=np.float32)
+        
+        return state
+    
+    def step(self, action):
+        """
+        Execute one day with the given action
+        
+        Actions (simplified decision-making):
+        0: Focus on health (exercise, healthy eating)
+        1: Focus on work (skill building, career)
+        2: Focus on relationships (social activities)
+        3: Focus on finances (saving, investing)
+        4: Risky behavior (substance use, crime if desperate)
+        5: Self-care (therapy, rest, entertainment)
+        """
+        if not self.sim.alive:
+            return self.get_state(), 0, True, {}
+        
+        # Modify simulation behavior based on action
+        # This is a simplified approach - in reality you'd want more granular control
+        old_money = self.sim.money
+        old_health = self.sim.health
+        old_mental_health = self.sim.mental_health
+        
+        # Execute action influence before daily routine
+        if action == 0:  # Health focus
+            self.sim.health += random.uniform(1, 3)
+            self.sim.weight -= random.uniform(0.3, 0.8)
+            self.sim.energy -= 20
+            self.sim.happiness += 5
+            
+        elif action == 1:  # Career focus
+            if self.sim.has_job:
+                self.sim.job_stability += random.uniform(1, 3)
+                self.sim.skill_level += random.uniform(0.01, 0.05)
+            else:
+                # Job searching
+                if random.random() < 0.05:  # 5% daily chance
+                    self.sim.has_job = True
+                    self.sim.monthly_income = random.uniform(3000, 5000) * self.sim.skill_level
+                    self.sim.job_stability = 70
+            self.sim.energy -= 15
+            
+        elif action == 2:  # Relationship focus
+            self.sim.social_support += random.uniform(1, 3)
+            self.sim.happiness += random.uniform(3, 8)
+            if self.sim.relationship_status in ['married', 'dating']:
+                self.sim.relationship_satisfaction += random.uniform(1, 4)
+            self.sim.money -= random.uniform(20, 100)  # Social activities cost money
+            
+        elif action == 3:  # Financial focus
+            if self.sim.money > 1000:
+                save_amount = self.sim.money * random.uniform(0.05, 0.15)
+                self.sim.money -= save_amount
+                self.sim.investments += save_amount
+                self.sim.mental_health += 2
+            if self.sim.debt > 0:
+                pay_amount = min(self.sim.money * 0.2, self.sim.debt)
+                self.sim.money -= pay_amount
+                self.sim.debt -= pay_amount
+                self.sim.mental_health += 3
+                
+        elif action == 4:  # Risky behavior
+            # Substance use risk
+            if random.random() < 0.3:
+                self.sim.alcohol_dependency += random.uniform(2, 8)
+                self.sim.happiness += random.uniform(5, 15)  # Short-term
+                self.sim.mental_health -= random.uniform(2, 6)  # Long-term cost
+                self.sim.money -= random.uniform(30, 100)
+            
+            # Crime if desperate
+            if self.sim.money < 500 and random.random() < 0.1:
+                if random.random() < 0.6:  # Success
+                    self.sim.money += random.uniform(500, 2000)
+                else:  # Caught
+                    self.sim.criminal_record.append('theft')
+                    self.sim.arrest_count += 1
+                    self.sim.mental_health -= 20
+                    
+        elif action == 5:  # Self-care
+            self.sim.mental_health += random.uniform(2, 6)
+            self.sim.happiness += random.uniform(3, 10)
+            self.sim.energy += random.uniform(10, 20)
+            self.sim.money -= random.uniform(50, 200)
+            
+            if self.sim.mental_health < 40 and not self.sim.therapy:
+                if random.random() < 0.3:
+                    self.sim.therapy = True
+        
+        # Run normal daily routine
+        self.sim.daily_routine()
+        
+        # Get reward
+        reward = self.sim.daily_rewards[-1] if self.sim.daily_rewards else 0
+        
+        # Check if done
+        done = not self.sim.alive
+        
+        # Additional info
+        info = {
+            'day': self.sim.day,
+            'age': self.sim.age,
+            'cause_of_end': self.sim.cause_of_end if done else None,
+            'total_reward': self.sim.total_reward
+        }
+        
+        return self.get_state(), reward, done, info
+
+
+class DQNAgent:
+    """Deep Q-Network agent for learning optimal life decisions"""
+    
+    def __init__(self, state_size=30, action_size=6, learning_rate=0.001):
+        if not TF_AVAILABLE:
+            raise ImportError("TensorFlow is required for DQN training")
+        
+        self.state_size = state_size
+        self.action_size = action_size
+        self.memory = []
+        self.memory_size = 10000
+        self.gamma = 0.95  # Discount factor
+        self.epsilon = 1.0  # Exploration rate
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.995
+        self.learning_rate = learning_rate
+        self.batch_size = 64
+        
+        # Build neural networks
+        self.model = self._build_model()
+        self.target_model = self._build_model()
+        self.update_target_model()
+        
+    def _build_model(self):
+        """Build neural network for Q-learning"""
+        model = models.Sequential([
+            layers.Dense(128, activation='relu', input_shape=(self.state_size,)),
+            layers.Dropout(0.2),
+            layers.Dense(128, activation='relu'),
+            layers.Dropout(0.2),
+            layers.Dense(64, activation='relu'),
+            layers.Dense(self.action_size, activation='linear')
+        ])
+        
+        model.compile(
+            optimizer=optimizers.Adam(learning_rate=self.learning_rate),
+            loss='mse'
+        )
+        return model
+    
+    def update_target_model(self):
+        """Update target network with current model weights"""
+        self.target_model.set_weights(self.model.get_weights())
+    
+    def remember(self, state, action, reward, next_state, done):
+        """Store experience in replay memory"""
+        self.memory.append((state, action, reward, next_state, done))
+        if len(self.memory) > self.memory_size:
+            self.memory.pop(0)
+    
+    def act(self, state):
+        """Choose action using epsilon-greedy policy"""
+        if np.random.rand() <= self.epsilon:
+            return random.randrange(self.action_size)
+        
+        state = np.reshape(state, [1, self.state_size])
+        q_values = self.model.predict(state, verbose=0)
+        return np.argmax(q_values[0])
+    
+    def replay(self):
+        """Train on batch of experiences from memory"""
+        if len(self.memory) < self.batch_size:
+            return 0
+        
+        # Sample batch
+        batch = random.sample(self.memory, self.batch_size)
+        
+        states = np.array([exp[0] for exp in batch])
+        actions = np.array([exp[1] for exp in batch])
+        rewards = np.array([exp[2] for exp in batch])
+        next_states = np.array([exp[3] for exp in batch])
+        dones = np.array([exp[4] for exp in batch])
+        
+        # Predict Q-values
+        current_q = self.model.predict(states, verbose=0)
+        next_q = self.target_model.predict(next_states, verbose=0)
+        
+        # Update Q-values
+        for i in range(self.batch_size):
+            if dones[i]:
+                current_q[i][actions[i]] = rewards[i]
+            else:
+                current_q[i][actions[i]] = rewards[i] + self.gamma * np.max(next_q[i])
+        
+        # Train
+        history = self.model.fit(states, current_q, epochs=1, verbose=0)
+        loss = history.history['loss'][0]
+        
+        # Decay epsilon
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        
+        return loss
+    
+    def save(self, filepath):
+        """Save model weights"""
+        self.model.save_weights(filepath)
+    
+    def load(self, filepath):
+        """Load model weights"""
+        self.model.load_weights(filepath)
+        self.update_target_model()
+
+
+def train_agent(episodes=100, max_days=1825, save_path='life_agent.h5'):
+    """
+    Train DQN agent to play the life simulation
+    
+    Args:
+        episodes: Number of lifetimes to simulate
+        max_days: Maximum days per episode (5 years default)
+        save_path: Path to save trained model
+    """
+    if not TF_AVAILABLE:
+        print("TensorFlow not available. Cannot train agent.")
+        return None
+    
+    env = LifeEnvironment()
+    agent = DQNAgent()
+    
+    rewards_history = []
+    days_survived_history = []
+    losses = []
+    
+    print(f"\n{'='*70}")
+    print(f"STARTING DQN TRAINING - {episodes} EPISODES")
+    print(f"{'='*70}\n")
+    
+    for episode in range(episodes):
+        state = env.reset()
+        total_reward = 0
+        day = 0
+        
+        for day in range(max_days):
+            # Choose action
+            action = agent.act(state)
+            
+            # Take step
+            next_state, reward, done, info = env.step(action)
+            
+            # Store experience
+            agent.remember(state, action, reward, next_state, done)
+            
+            # Train
+            loss = agent.replay()
+            if loss > 0:
+                losses.append(loss)
+            
+            state = next_state
+            total_reward += reward
+            
+            if done:
+                break
+        
+        # Update target network periodically
+        if episode % 10 == 0:
+            agent.update_target_model()
+        
+        rewards_history.append(total_reward)
+        days_survived_history.append(day)
+        
+        # Print progress
+        if episode % 10 == 0:
+            avg_reward = np.mean(rewards_history[-10:])
+            avg_days = np.mean(days_survived_history[-10:])
+            avg_loss = np.mean(losses[-100:]) if losses else 0
+            print(f"Episode {episode}/{episodes} | "
+                  f"Days: {day} | "
+                  f"Reward: {total_reward:.1f} | "
+                  f"Avg Reward: {avg_reward:.1f} | "
+                  f"Avg Days: {avg_days:.0f} | "
+                  f"Loss: {avg_loss:.4f} | "
+                  f"Epsilon: {agent.epsilon:.3f}")
+    
+    # Save trained model
+    agent.save(save_path)
+    print(f"\nModel saved to {save_path}")
+    
+    # Plot training results
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    fig.suptitle('DQN Training Results', fontsize=16, fontweight='bold')
+    
+    axes[0,0].plot(rewards_history)
+    axes[0,0].set_title('Total Reward per Episode')
+    axes[0,0].set_xlabel('Episode')
+    axes[0,0].set_ylabel('Total Reward')
+    axes[0,0].grid(True, alpha=0.3)
+    
+    axes[0,1].plot(days_survived_history)
+    axes[0,1].set_title('Days Survived per Episode')
+    axes[0,1].set_xlabel('Episode')
+    axes[0,1].set_ylabel('Days')
+    axes[0,1].grid(True, alpha=0.3)
+    
+    if losses:
+        axes[1,0].plot(losses)
+        axes[1,0].set_title('Training Loss')
+        axes[1,0].set_xlabel('Training Step')
+        axes[1,0].set_ylabel('Loss')
+        axes[1,0].grid(True, alpha=0.3)
+    
+    # Moving average of rewards
+    window = 10
+    if len(rewards_history) >= window:
+        moving_avg = [np.mean(rewards_history[i:i+window]) for i in range(len(rewards_history)-window+1)]
+        axes[1,1].plot(moving_avg)
+        axes[1,1].set_title(f'Moving Average Reward (window={window})')
+        axes[1,1].set_xlabel('Episode')
+        axes[1,1].set_ylabel('Average Reward')
+        axes[1,1].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.show()
+    
+    return agent
+
+
+def evaluate_agent(agent, episodes=10, render=True):
+    """
+    Evaluate trained agent
+    
+    Args:
+        agent: Trained DQNAgent
+        episodes: Number of test episodes
+        render: Whether to show detailed output
+    """
+    env = LifeEnvironment()
+    
+    total_rewards = []
+    days_survived = []
+    
+    print(f"\n{'='*70}")
+    print(f"EVALUATING AGENT - {episodes} EPISODES")
+    print(f"{'='*70}\n")
+    
+    for episode in range(episodes):
+        state = env.reset()
+        total_reward = 0
+        day = 0
+        
+        # Use greedy policy (no exploration)
+        old_epsilon = agent.epsilon
+        agent.epsilon = 0
+        
+        for day in range(1825):  # Max 5 years
+            action = agent.act(state)
+            next_state, reward, done, info = env.step(action)
+            
+            state = next_state
+            total_reward += reward
+            
+            if done:
+                break
+        
+        agent.epsilon = old_epsilon
+        
+        total_rewards.append(total_reward)
+        days_survived.append(day)
+        
+        if render:
+            print(f"Episode {episode+1}: Days={day}, Reward={total_reward:.1f}, "
+                  f"Cause={'Alive' if env.sim.alive else env.sim.cause_of_end}")
+    
+    print(f"\n{'='*70}")
+    print(f"EVALUATION RESULTS")
+    print(f"{'='*70}")
+    print(f"Average Reward: {np.mean(total_rewards):.1f} (±{np.std(total_rewards):.1f})")
+    print(f"Average Days Survived: {np.mean(days_survived):.0f} (±{np.std(days_survived):.0f})")
+    print(f"Best Reward: {np.max(total_rewards):.1f}")
+    print(f"Worst Reward: {np.min(total_rewards):.1f}")
+    print(f"{'='*70}\n")
+
+
+# Example usage for training
+def train_example():
+    """Example: Train an agent for 100 episodes"""
+    if not TF_AVAILABLE:
+        print("TensorFlow not available. Install with: pip install tensorflow")
+        return
+    
+    agent = train_agent(episodes=100, max_days=1825, save_path='life_agent.h5')
+    
+    if agent:
+        print("\nEvaluating trained agent...")
+        evaluate_agent(agent, episodes=5, render=True)
+
+
+# Uncomment to train:
+# train_example()
