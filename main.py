@@ -316,11 +316,11 @@ class EnhancedLifeSimulation:
         
         self.career_field = random.choice(list(CareerField))
         self.job_title = self.get_initial_job_title()
+        self.years_experience = random.uniform(0, 3)  # MOVED HERE - before calculate_income
         self.monthly_income = self.calculate_income()
         self.has_job = self.monthly_income > 0
         self.job_stability = 100.0 if self.has_job else 0
         self.job_satisfaction = random.uniform(40, 80) if self.has_job else 0
-        self.years_experience = random.uniform(0, 3)
         self.skill_level = 1.0 + self.years_experience * 0.1
         self.career_achievements = []
         

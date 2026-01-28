@@ -10,7 +10,7 @@ The error `ImportError: dlopen... libtensorflow_cc.2.dylib` indicates that Tenso
 
 ```bash
 # Just run option 1 - it works great!
-python3 enhanced_life_simulation.py
+python3 main.py
 # Choose option 1: Run single simulation
 ```
 
