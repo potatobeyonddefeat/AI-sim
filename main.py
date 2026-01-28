@@ -5,14 +5,24 @@ import numpy as np
 from collections import defaultdict
 from enum import Enum
 
+# Try to import TensorFlow, but make it optional
+TF_AVAILABLE = False
+TF_ERROR_MESSAGE = None
+
 try:
     import tensorflow as tf
     from tensorflow import keras
     from tensorflow.keras import layers, models, optimizers
     TF_AVAILABLE = True
-except ImportError:
-    TF_AVAILABLE = False
-    print("TensorFlow not available. RL training features disabled.")
+    print("✓ TensorFlow loaded successfully")
+except ImportError as e:
+    TF_ERROR_MESSAGE = f"ImportError: {str(e)}"
+    print("⚠ TensorFlow not available - RL training features disabled")
+    print("  The simulation will still work perfectly for single runs!")
+except Exception as e:
+    TF_ERROR_MESSAGE = f"Error: {str(e)}"
+    print("⚠ TensorFlow import failed - RL training features disabled")
+    print("  The simulation will still work perfectly for single runs!")
 
 # ==================== ENUMS AND CONSTANTS ====================
 
@@ -3266,11 +3276,33 @@ if __name__ == "__main__":
     print("\n" + "="*80)
     print("ENHANCED LIFE SIMULATION WITH DEEP REINFORCEMENT LEARNING")
     print("="*80)
+    
+    # Show TensorFlow status
+    if TF_AVAILABLE:
+        print("✓ TensorFlow Status: AVAILABLE (All features enabled)")
+    else:
+        print("⚠ TensorFlow Status: NOT AVAILABLE")
+        print("  RL training features are disabled, but simulations work perfectly!")
+        print("\n  To enable TensorFlow on macOS (especially M1/M2/M3 Macs):")
+        print("  1. Install via conda: conda install tensorflow")
+        print("  2. Or use tensorflow-macos: pip install tensorflow-macos tensorflow-metal")
+        print("  3. Or continue without training - single simulations work great!")
+        if TF_ERROR_MESSAGE:
+            print(f"\n  Error details: {TF_ERROR_MESSAGE}")
+    
+    print("\n" + "="*80)
     print("\nOptions:")
-    print("1. Run single simulation (no training)")
-    print("2. Train RL agent")
-    print("3. Evaluate trained agent")
-    print("4. Compare trained vs random")
+    print("1. Run single simulation (no training) ✓ Always available")
+    
+    if TF_AVAILABLE:
+        print("2. Train RL agent ✓ TensorFlow available")
+        print("3. Evaluate trained agent ✓ TensorFlow available")
+        print("4. Compare trained vs random ✓ TensorFlow available")
+    else:
+        print("2. Train RL agent ✗ Requires TensorFlow")
+        print("3. Evaluate trained agent ✗ Requires TensorFlow")
+        print("4. Compare trained vs random ✗ Requires TensorFlow")
+    
     print("="*80)
     
     choice = input("\nEnter choice (1-4, default=1): ").strip() or "1"
@@ -3280,6 +3312,16 @@ if __name__ == "__main__":
         sim, df = run_simulation(days=3650, seed=None, verbose=False)
         
     elif choice == "2":
+        if not TF_AVAILABLE:
+            print("\n❌ ERROR: TensorFlow is required for training.")
+            print("Please install TensorFlow and try again.")
+            print("\nFor macOS with Apple Silicon (M1/M2/M3):")
+            print("  conda install -c apple tensorflow-deps")
+            print("  pip install tensorflow-macos tensorflow-metal")
+            print("\nFor other systems:")
+            print("  pip install tensorflow")
+            sys.exit(1)
+        
         episodes = int(input("Enter number of episodes (default=200): ").strip() or "200")
         print(f"\nTraining agent for {episodes} episodes...")
         agent = train_agent(episodes=episodes, max_days=3650, save_path='life_agent_v2.weights.h5')
@@ -3289,6 +3331,11 @@ if __name__ == "__main__":
             evaluate_agent(agent, episodes=10, render=True)
             
     elif choice == "3":
+        if not TF_AVAILABLE:
+            print("\n❌ ERROR: TensorFlow is required for evaluation.")
+            print("Please install TensorFlow and try again.")
+            sys.exit(1)
+            
         model_path = input("Enter model path (default=life_agent_v2.weights.h5): ").strip() or "life_agent_v2.weights.h5"
         try:
             agent = DQNAgent(state_size=64, action_size=15)
@@ -3298,6 +3345,11 @@ if __name__ == "__main__":
             print(f"Error loading model: {e}")
             
     elif choice == "4":
+        if not TF_AVAILABLE:
+            print("\n❌ ERROR: TensorFlow is required for comparison.")
+            print("Please install TensorFlow and try again.")
+            sys.exit(1)
+            
         model_path = input("Enter model path (default=life_agent_v2.weights.h5): ").strip() or "life_agent_v2.weights.h5"
         try:
             agent = DQNAgent(state_size=64, action_size=15)
@@ -3305,3 +3357,6 @@ if __name__ == "__main__":
             compare_trained_vs_random(agent, episodes=20)
         except Exception as e:
             print(f"Error loading model: {e}")
+    else:
+        print(f"Invalid choice: {choice}")
+        sys.exit(1)

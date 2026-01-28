@@ -257,14 +257,14 @@ The RL agent observes 64 features including:
 
 ### Option 1: Run Single Simulation
 ```python
-python enhanced_life_simulation.py
+python main.py
 # Choose option 1
 # Simulates 10 years of life with visualizations
 ```
 
 ### Option 2: Train RL Agent
 ```python
-python enhanced_life_simulation.py
+python main.py
 # Choose option 2
 # Enter number of episodes (recommended: 200-500)
 # Agent learns optimal life decisions through trial and error
@@ -273,7 +273,7 @@ python enhanced_life_simulation.py
 
 ### Option 3: Evaluate Trained Agent
 ```python
-python enhanced_life_simulation.py
+python main.py
 # Choose option 3
 # Load trained model
 # Run 10 test episodes to see performance
@@ -282,7 +282,7 @@ python enhanced_life_simulation.py
 
 ### Option 4: Compare Trained vs Random
 ```python
-python enhanced_life_simulation.py
+python main.py
 # Choose option 4
 # Loads trained agent
 # Compares against random baseline
