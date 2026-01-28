@@ -41,6 +41,78 @@ class CareerField(Enum):
     SERVICE = "service"
     GOVERNMENT = "government"
 
+class Pet:
+    """Pet companion"""
+    def __init__(self, pet_type, name, age=0):
+        self.type = pet_type  # 'dog', 'cat', 'bird', etc.
+        self.name = name
+        self.age = age
+        self.health = 100.0
+        self.happiness = 80.0
+        self.alive = True
+        
+        # Lifespan varies by type
+        self.max_age = {
+            'dog': 12,
+            'cat': 15,
+            'bird': 10,
+            'fish': 3,
+            'hamster': 2
+        }.get(pet_type, 10)
+        
+    def age_one_day(self):
+        self.age += 1/365.0
+        self.health -= random.uniform(0, 0.1)
+        
+        # Aging effects
+        if self.age > self.max_age * 0.7:
+            self.health -= random.uniform(0.1, 0.3)
+            
+    def should_die(self):
+        if self.age > self.max_age:
+            return random.random() < 0.1
+        return self.health <= 0 or random.random() < 0.0001
+
+class Business:
+    """Player-owned business"""
+    def __init__(self, business_type, initial_investment):
+        self.type = business_type
+        self.value = initial_investment
+        self.monthly_profit = 0
+        self.age = 0
+        self.success_level = random.uniform(0, 50)
+        
+    def operate_monthly(self, owner_skill, owner_time_invested):
+        """Calculate monthly profit/loss"""
+        self.age += 1
+        
+        # Base profit calculation
+        base_profit = self.value * 0.05  # 5% monthly return on value
+        
+        # Factors
+        skill_factor = 1 + (owner_skill / 100)
+        time_factor = owner_time_invested / 100
+        success_factor = 1 + (self.success_level / 100)
+        market_factor = random.uniform(0.7, 1.3)
+        
+        profit = base_profit * skill_factor * time_factor * success_factor * market_factor
+        
+        # Random events
+        if random.random() < 0.05:  # 5% chance of major event
+            if random.random() < 0.5:
+                # Good event
+                profit *= random.uniform(1.5, 3.0)
+            else:
+                # Bad event
+                profit *= random.uniform(0.3, 0.7)
+        
+        self.monthly_profit = profit - (self.value * 0.03)  # Operating costs
+        self.value += self.monthly_profit * 0.1  # Growth
+        self.success_level += random.uniform(-2, 3)
+        self.success_level = max(0, min(100, self.success_level))
+        
+        return self.monthly_profit
+
 # ==================== ENHANCED PERSON CLASS ====================
 
 class Person:
@@ -342,6 +414,45 @@ class EnhancedLifeSimulation:
         # AI NPCs
         self.ai_npcs = []
         self.npc_interactions = []
+        
+        # Pets
+        self.pets = []
+        if random.random() < 0.3:  # 30% start with a pet
+            pet_type = random.choice(['dog', 'cat', 'bird', 'fish'])
+            self.pets.append(Pet(pet_type, f"{pet_type.capitalize()}1", random.uniform(0, 5)))
+        
+        # Business ownership
+        self.owns_business = False
+        self.business = None
+        
+        # Mental health specifics
+        self.has_anxiety = random.random() < 0.15
+        self.has_depression = random.random() < 0.10
+        self.ptsd = False
+        
+        # Additional tracking
+        self.lottery_wins = []
+        self.inheritances_received = []
+        self.natural_disasters_survived = []
+        self.major_accidents = []
+        self.volunteer_hours = 0
+        self.books_read = 0
+        self.countries_visited = []
+        self.languages_learned = []
+        
+        # Skills beyond job
+        self.cooking_skill = random.uniform(0, 50)
+        self.fitness_level = random.uniform(0, 50)
+        self.creativity = random.uniform(0, 50)
+        self.leadership = random.uniform(0, 50)
+        
+        # Political/social
+        self.political_affiliation = random.choice(['liberal', 'conservative', 'moderate', 'none'])
+        self.votes_cast = 0
+        
+        # Fame/notoriety
+        self.fame_level = 0  # 0-100
+        self.viral_moments = []
         
         # Tracking
         self.net_worth_history = []
@@ -870,6 +981,406 @@ class EnhancedLifeSimulation:
             self.investments += investment_amount
             self.log_event(f"Invested ${investment_amount:.0f}")
     
+    def handle_pets(self):
+        """Handle pet care and events"""
+        pets_to_remove = []
+        
+        for pet in self.pets:
+            pet.age_one_day()
+            
+            # Pet care costs
+            daily_cost = {'dog': 3, 'cat': 2, 'bird': 1, 'fish': 0.5, 'hamster': 1}
+            self.money -= daily_cost.get(pet.type, 2)
+            
+            # Pet benefits
+            if pet.type in ['dog', 'cat']:
+                self.happiness += random.uniform(1, 4)
+                self.mental_health += random.uniform(0.5, 2)
+                self.stress -= random.uniform(1, 3)
+                self.social_support += 0.2
+            
+            # Pet health issues
+            if random.random() < 0.002:
+                vet_cost = random.uniform(200, 2000)
+                self.money -= vet_cost
+                self.stress += 10
+                pet.health += 20
+                self.log_event(f"{pet.name} had vet visit: ${vet_cost:.0f}")
+            
+            # Pet death
+            if pet.should_die():
+                pets_to_remove.append(pet)
+                self.log_event(f"{pet.name} (pet {pet.type}) died at age {pet.age:.1f}")
+                self.happiness -= random.uniform(20, 40)
+                self.mental_health -= random.uniform(15, 30)
+                self.stress += random.uniform(10, 25)
+        
+        for pet in pets_to_remove:
+            self.pets.remove(pet)
+        
+        # Get a new pet
+        if len(self.pets) == 0 and random.random() < 0.003:
+            if self.money > 500:
+                pet_type = random.choice(['dog', 'cat', 'bird', 'fish', 'hamster'])
+                adoption_cost = random.uniform(50, 500)
+                self.money -= adoption_cost
+                self.pets.append(Pet(pet_type, f"{pet_type.capitalize()}1", 0))
+                self.log_event(f"Adopted a {pet_type}!")
+                self.happiness += 25
+    
+    def handle_natural_disasters(self):
+        """Handle natural disasters"""
+        if random.random() < 0.0001:  # Very rare
+            disasters = ['hurricane', 'tornado', 'earthquake', 'flood', 'wildfire']
+            disaster = random.choice(disasters)
+            
+            self.log_event(f"Natural disaster: {disaster}!")
+            self.natural_disasters_survived.append(disaster)
+            
+            # Health impact
+            injury_severity = random.uniform(0, 30)
+            self.health -= injury_severity
+            self.mental_health -= random.uniform(15, 40)
+            self.stress += random.uniform(25, 50)
+            self.ptsd = True if injury_severity > 15 else self.ptsd
+            
+            # Property damage
+            if self.owns_home:
+                damage = self.home_value * random.uniform(0.1, 0.8)
+                self.home_value -= damage
+                self.log_event(f"Home damaged: -${damage:.0f} value")
+                
+                # Insurance payout
+                if self.has_health_insurance:
+                    payout = damage * random.uniform(0.6, 0.9)
+                    self.money += payout
+                    self.log_event(f"Insurance payout: +${payout:.0f}")
+            
+            if self.car_working and random.random() < 0.4:
+                self.car_working = False
+                self.car_value *= random.uniform(0.3, 0.7)
+                self.log_event("Car damaged in disaster")
+            
+            # Financial losses
+            loss = random.uniform(1000, 20000)
+            self.money -= loss
+            
+            # PTSD treatment
+            if self.ptsd:
+                self.therapy = True
+                self.medication = True
+                self.medication_cost_monthly += random.uniform(200, 500)
+    
+    def handle_accidents(self):
+        """Handle random accidents"""
+        if random.random() < 0.001:  # 0.1% daily
+            accidents = ['car_crash', 'fall', 'sports_injury', 'work_accident', 'home_accident']
+            accident = random.choice(accidents)
+            
+            severity = random.uniform(0, 100)
+            
+            if severity > 80:
+                # Severe accident
+                self.log_event(f"Severe {accident.replace('_', ' ')}!")
+                self.health -= random.uniform(30, 60)
+                self.mental_health -= random.uniform(15, 35)
+                
+                hospital_stay = random.randint(3, 30)
+                if self.has_health_insurance:
+                    cost = random.uniform(5000, 30000)
+                else:
+                    cost = random.uniform(30000, 200000)
+                
+                self.money -= cost
+                self.stress += 40
+                self.major_accidents.append(accident)
+                
+                # Disability chance
+                if severity > 95:
+                    self.chronic_conditions.append('disability')
+                    self.log_event("Permanent disability from accident")
+                    self.health -= 20
+                    
+                    if self.has_job:
+                        self.monthly_income *= 0.6  # Reduced income
+                        
+            elif severity > 40:
+                # Moderate accident
+                self.log_event(f"Moderate {accident.replace('_', ' ')}")
+                self.health -= random.uniform(10, 25)
+                
+                if self.has_health_insurance:
+                    cost = random.uniform(1000, 8000)
+                else:
+                    cost = random.uniform(5000, 25000)
+                    
+                self.money -= cost
+                self.stress += 15
+            else:
+                # Minor accident
+                self.health -= random.uniform(2, 8)
+                self.money -= random.uniform(200, 2000)
+    
+    def handle_lottery(self):
+        """Handle lottery and gambling"""
+        # Buy lottery ticket
+        if random.random() < 0.01 and self.money > 10:
+            ticket_cost = random.uniform(5, 20)
+            self.money -= ticket_cost
+            
+            # Winning chances
+            win_chance = random.random()
+            
+            if win_chance < 0.0001:  # Jackpot!
+                winnings = random.uniform(1000000, 100000000)
+                self.money += winnings
+                self.log_event(f"LOTTERY JACKPOT: ${winnings:,.0f}!!!")
+                self.lottery_wins.append(winnings)
+                self.happiness += 100  # Will be clamped
+                self.fame_level += 30
+                self.viral_moments.append(f"lottery_win_{winnings:.0f}")
+                self.life_milestones.append("Won lottery jackpot")
+                
+            elif win_chance < 0.001:  # Big win
+                winnings = random.uniform(10000, 500000)
+                self.money += winnings
+                self.log_event(f"Lottery win: ${winnings:,.0f}!")
+                self.lottery_wins.append(winnings)
+                self.happiness += 50
+                
+            elif win_chance < 0.01:  # Small win
+                winnings = random.uniform(100, 5000)
+                self.money += winnings
+                self.happiness += 10
+    
+    def handle_business_ownership(self):
+        """Handle owning and operating a business"""
+        if self.owns_business and self.business:
+            # Monthly operations
+            if self.day % 30 == 1:
+                time_invested = random.uniform(40, 100) if self.has_job else 100
+                profit = self.business.operate_monthly(self.skill_level * 10, time_invested)
+                
+                self.money += profit
+                
+                if profit > 0:
+                    self.happiness += min(20, profit / 1000)
+                    self.log_event(f"Business profit: +${profit:.0f}")
+                else:
+                    self.stress += min(20, abs(profit) / 1000)
+                    self.log_event(f"Business loss: ${profit:.0f}")
+                
+                # Business failure
+                if self.business.success_level < 10 and random.random() < 0.1:
+                    self.log_event("Business failed!")
+                    self.owns_business = False
+                    self.mental_health -= 30
+                    self.happiness -= 40
+                    self.stress += 35
+                    self.business = None
+        
+        # Start a business
+        elif not self.owns_business and random.random() < 0.0005:
+            if self.money > 20000 and self.skill_level > 2:
+                investment = random.uniform(15000, 100000)
+                
+                if self.money > investment or random.random() < 0.4:
+                    business_types = ['restaurant', 'retail', 'tech_startup', 'consulting', 'trade_service']
+                    business_type = random.choice(business_types)
+                    
+                    self.money -= investment
+                    self.business = Business(business_type, investment)
+                    self.owns_business = True
+                    self.log_event(f"Started {business_type} business!")
+                    self.life_milestones.append("Started own business")
+                    self.stress += 25
+    
+    def handle_inheritance_events(self):
+        """Random inheritances from distant relatives"""
+        if random.random() < 0.0002:  # Very rare
+            inheritance = random.uniform(5000, 500000)
+            self.money += inheritance
+            self.inheritances_received.append(inheritance)
+            self.log_event(f"Received inheritance: ${inheritance:,.0f}")
+            self.happiness += min(40, inheritance / 10000)
+    
+    def handle_mental_health_conditions(self):
+        """Handle specific mental health conditions"""
+        # Anxiety
+        if self.has_anxiety:
+            self.stress += random.uniform(0.5, 2)
+            self.mental_health -= random.uniform(0.2, 1)
+            
+            if not self.medication and random.random() < 0.01:
+                self.medication = True
+                self.medication_cost_monthly += random.uniform(50, 200)
+                self.log_event("Started anxiety medication")
+        
+        # Depression
+        if self.has_depression:
+            self.happiness -= random.uniform(0.3, 1.5)
+            self.energy -= random.uniform(0.2, 1)
+            self.mental_health -= random.uniform(0.3, 1.2)
+            
+            if not self.therapy and random.random() < 0.02:
+                self.therapy = True
+                self.log_event("Started therapy for depression")
+        
+        # PTSD
+        if self.ptsd:
+            if random.random() < 0.05:  # Flashbacks/episodes
+                self.mental_health -= random.uniform(5, 20)
+                self.stress += random.uniform(10, 30)
+                self.happiness -= random.uniform(10, 25)
+        
+        # Develop new conditions
+        if self.stress > 80 and not self.has_anxiety and random.random() < 0.001:
+            self.has_anxiety = True
+            self.log_event("Developed anxiety disorder")
+        
+        if self.happiness < 20 and self.mental_health < 30 and not self.has_depression and random.random() < 0.001:
+            self.has_depression = True
+            self.log_event("Developed depression")
+    
+    def handle_skill_development(self):
+        """Develop various skills through practice"""
+        # Cooking
+        if random.random() < 0.1:
+            self.cooking_skill += random.uniform(0.1, 0.5)
+            if self.cooking_skill > 80 and random.random() < 0.01:
+                # Cooking side income
+                earnings = random.uniform(100, 1000)
+                self.money += earnings
+                self.log_event(f"Catering job: +${earnings:.0f}")
+        
+        # Fitness
+        if self.gym_membership and random.random() < 0.3:
+            self.fitness_level += random.uniform(0.3, 1.0)
+            self.health += random.uniform(0.2, 0.8)
+        
+        # Creativity
+        for hobby_name, hobby in self.hobbies.items():
+            if hobby.category == 'creative':
+                self.creativity += 0.1
+        
+        # Leadership
+        if self.has_job and self.job_satisfaction > 70:
+            self.leadership += random.uniform(0.05, 0.2)
+        
+        # Skills cap at 100
+        self.cooking_skill = min(100, self.cooking_skill)
+        self.fitness_level = min(100, self.fitness_level)
+        self.creativity = min(100, self.creativity)
+        self.leadership = min(100, self.leadership)
+    
+    def handle_social_media_fame(self):
+        """Handle viral moments and fame"""
+        # Random viral moment
+        if random.random() < 0.0005:
+            viral_type = random.choice(['video', 'tweet', 'photo', 'blog_post'])
+            self.fame_level += random.uniform(10, 40)
+            self.viral_moments.append(viral_type)
+            self.log_event(f"Went viral with {viral_type}!")
+            
+            # Fame effects
+            self.happiness += 20
+            self.social_support += 15
+            self.stress += 10
+            
+            # Monetary gain
+            earnings = random.uniform(1000, 50000)
+            self.money += earnings
+        
+        # Fame decay
+        if self.fame_level > 0:
+            self.fame_level -= random.uniform(0.1, 0.5)
+            self.fame_level = max(0, self.fame_level)
+        
+        # High fame effects
+        if self.fame_level > 50:
+            self.stress += random.uniform(0.5, 2)
+            self.happiness += random.uniform(0, 1)
+            
+            # Chance of losing privacy/stalker
+            if random.random() < 0.001:
+                self.mental_health -= random.uniform(10, 30)
+                self.stress += random.uniform(15, 35)
+                self.log_event("Dealing with loss of privacy due to fame")
+    
+    def handle_education_achievements(self):
+        """Reading, learning languages, etc."""
+        # Reading
+        if random.random() < 0.05:
+            self.books_read += 1
+            self.mental_health += random.uniform(1, 3)
+            self.happiness += random.uniform(2, 6)
+            self.creativity += random.uniform(0.2, 0.8)
+            
+            if self.books_read % 50 == 0:
+                self.log_event(f"Read {self.books_read} books!")
+                self.life_milestones.append(f"Read {self.books_read} books")
+        
+        # Learning languages
+        if random.random() < 0.0003 and len(self.languages_learned) < 5:
+            language = random.choice(['Spanish', 'French', 'German', 'Chinese', 'Japanese', 'Italian'])
+            if language not in self.languages_learned:
+                self.languages_learned.append(language)
+                self.log_event(f"Learned {language}!")
+                self.skill_level += 0.5
+                self.happiness += 20
+    
+    def handle_travel(self):
+        """Handle travel and vacations"""
+        if random.random() < 0.002 and self.money > 2000:
+            countries = ['France', 'Italy', 'Japan', 'Australia', 'Brazil', 'Egypt', 
+                        'Thailand', 'Spain', 'Greece', 'Mexico', 'UK', 'Germany']
+            country = random.choice([c for c in countries if c not in self.countries_visited])
+            
+            if country:
+                cost = random.uniform(1500, 8000)
+                self.money -= cost
+                self.countries_visited.append(country)
+                self.happiness += random.uniform(25, 50)
+                self.stress -= random.uniform(20, 40)
+                self.mental_health += random.uniform(10, 25)
+                self.log_event(f"Traveled to {country}!")
+                
+                # Check travel goal
+                if len(self.countries_visited) >= 10:
+                    for i, goal in enumerate(self.life_goals):
+                        if goal[0] == 'travel_world':
+                            self.completed_goals.append(goal)
+                            self.life_goals.pop(i)
+                            self.happiness += 40
+                            self.log_event("Completed travel goal!")
+                            break
+    
+    def handle_political_engagement(self):
+        """Voting and political activity"""
+        # Election day (simplified - every 2 years)
+        if self.day % 730 == 0 and self.age >= 18:
+            if random.random() < 0.6:  # 60% voting rate
+                self.votes_cast += 1
+                self.happiness += random.uniform(3, 10)
+                self.stress += random.uniform(2, 8)
+                
+                if self.votes_cast % 5 == 0:
+                    self.log_event(f"Voted in {self.votes_cast} elections")
+    
+    def handle_volunteering(self):
+        """Volunteer work"""
+        if random.random() < 0.01:
+            hours = random.uniform(2, 8)
+            self.volunteer_hours += hours
+            self.happiness += random.uniform(5, 15)
+            self.mental_health += random.uniform(3, 10)
+            self.reputation += random.uniform(2, 8)
+            self.social_support += random.uniform(2, 6)
+            
+            if self.volunteer_hours >= 100 and self.volunteer_hours % 100 < 8:
+                self.log_event(f"Volunteered {int(self.volunteer_hours)} hours total!")
+                self.life_milestones.append(f"Volunteered {int(self.volunteer_hours)} hours")
+    
     def handle_home_purchase(self):
         """Handle buying a home"""
         if not self.owns_home and self.money > 50000 and self.credit_score > 650:
@@ -1320,6 +1831,45 @@ class EnhancedLifeSimulation:
         # AI NPCs
         self.simulate_npc_interactions()
         
+        # Pets
+        self.handle_pets()
+        
+        # Natural disasters
+        self.handle_natural_disasters()
+        
+        # Accidents
+        self.handle_accidents()
+        
+        # Lottery
+        self.handle_lottery()
+        
+        # Business
+        self.handle_business_ownership()
+        
+        # Random inheritances
+        self.handle_inheritance_events()
+        
+        # Mental health conditions
+        self.handle_mental_health_conditions()
+        
+        # Skill development
+        self.handle_skill_development()
+        
+        # Social media/fame
+        self.handle_social_media_fame()
+        
+        # Education (reading, languages)
+        self.handle_education_achievements()
+        
+        # Travel
+        self.handle_travel()
+        
+        # Political engagement
+        self.handle_political_engagement()
+        
+        # Volunteering
+        self.handle_volunteering()
+        
         # Age children
         for child in self.children:
             if child.alive:
@@ -1634,6 +2184,54 @@ def run_simulation(days=1825, seed=None, verbose=False):
     if sim.criminal_record:
         print(f"  Crimes: {', '.join(set(sim.criminal_record))}")
     
+    print(f"\nPets:")
+    if sim.pets:
+        for pet in sim.pets:
+            print(f"  {pet.name} ({pet.type}), age {pet.age:.1f}")
+    else:
+        print(f"  No pets")
+    
+    print(f"\nBusiness:")
+    if sim.owns_business:
+        print(f"  Type: {sim.business.type}")
+        print(f"  Value: ${sim.business.value:,.0f}")
+        print(f"  Monthly profit: ${sim.business.monthly_profit:,.0f}")
+    else:
+        print(f"  No business")
+    
+    print(f"\nMental Health:")
+    conditions = []
+    if sim.has_anxiety:
+        conditions.append("Anxiety")
+    if sim.has_depression:
+        conditions.append("Depression")
+    if sim.ptsd:
+        conditions.append("PTSD")
+    print(f"  Conditions: {', '.join(conditions) if conditions else 'None'}")
+    
+    print(f"\nSkills:")
+    print(f"  Cooking: {sim.cooking_skill:.0f} | Fitness: {sim.fitness_level:.0f}")
+    print(f"  Creativity: {sim.creativity:.0f} | Leadership: {sim.leadership:.0f}")
+    
+    print(f"\nAchievements:")
+    print(f"  Books read: {sim.books_read}")
+    print(f"  Languages: {len(sim.languages_learned)} - {', '.join(sim.languages_learned[:3])}")
+    print(f"  Countries visited: {len(sim.countries_visited)}")
+    print(f"  Volunteer hours: {sim.volunteer_hours:.0f}")
+    print(f"  Fame level: {sim.fame_level:.0f}")
+    
+    print(f"\nMajor Events:")
+    if sim.lottery_wins:
+        print(f"  Lottery wins: {len(sim.lottery_wins)} (total: ${sum(sim.lottery_wins):,.0f})")
+    if sim.inheritances_received:
+        print(f"  Inheritances: {len(sim.inheritances_received)} (total: ${sum(sim.inheritances_received):,.0f})")
+    if sim.natural_disasters_survived:
+        print(f"  Natural disasters: {', '.join(sim.natural_disasters_survived)}")
+    if sim.major_accidents:
+        print(f"  Major accidents: {len(sim.major_accidents)}")
+    if sim.viral_moments:
+        print(f"  Viral moments: {len(sim.viral_moments)}")
+    
     print(f"\nAI NPCs in world: {len(sim.ai_npcs)}")
     print(f"NPC interactions: {len(sim.npc_interactions)}")
     
@@ -1772,19 +2370,938 @@ Total Reward: {sim.total_reward:.0f}
     return sim, df
 
 
-if __name__ == "__main__":
-    print("Running Enhanced Life Simulation with AI NPCs...")
-    print("This includes:")
-    print("- AI-controlled NPCs that age and die")
-    print("- NPC-to-NPC interactions")
-    print("- NPC-to-player interactions")
-    print("- Enhanced career progression")
-    print("- Education system")
-    print("- Hobby system")
-    print("- Life goals and achievements")
-    print("- Home ownership")
-    print("- Investment system")
-    print("- Credit score tracking")
-    print("- And much more!\n")
+# ==================== REINFORCEMENT LEARNING ENVIRONMENT ====================
+
+class LifeEnvironment:
+    """RL Environment wrapper for training AI agents"""
     
-    sim, df = run_simulation(days=3650, seed=None, verbose=False)  # 10 years
+    def __init__(self, seed=None):
+        self.sim = None
+        self.seed = seed
+        self.action_space_size = 15  # Expanded action space
+        self.state_size = 64  # Expanded state representation with new features
+        
+    def reset(self):
+        """Reset environment and return initial state"""
+        self.sim = EnhancedLifeSimulation(seed=self.seed, verbose=False)
+        return self.get_state()
+    
+    def get_state(self):
+        """Get current state as normalized numpy array"""
+        if not self.sim.alive:
+            return np.zeros(self.state_size)
+        
+        # Core vitals
+        state = [
+            self.sim.age / 100.0,
+            self.sim.health / 100.0,
+            self.sim.mental_health / 100.0,
+            self.sim.happiness / 100.0,
+            self.sim.energy / 100.0,
+            self.sim.stress / 100.0,
+            
+            # Physical
+            self.sim.weight / 200.0,
+            self.sim.bmi() / 50.0,
+            1.0 if self.sim.sick else 0.0,
+            len(self.sim.chronic_conditions) / 5.0,
+            
+            # Financial
+            np.tanh(self.sim.money / 50000.0),  # Soft cap
+            np.tanh(self.sim.debt / 50000.0),
+            np.tanh(self.sim.student_loan_debt / 100000.0),
+            np.tanh(self.sim.investments / 50000.0),
+            np.tanh(self.sim.has_retirement_savings / 100000.0),
+            self.sim.credit_score / 850.0,
+            1.0 if self.sim.owns_home else 0.0,
+            
+            # Career
+            1.0 if self.sim.has_job else 0.0,
+            self.sim.job_stability / 100.0,
+            self.sim.job_satisfaction / 100.0,
+            self.sim.skill_level / 10.0,
+            self.sim.years_experience / 20.0,
+            self.sim.reputation / 100.0,
+            1.0 if hasattr(self.sim, 'in_school') and self.sim.in_school else 0.0,
+            
+            # Social
+            self.sim.social_support / 100.0,
+            len(self.sim.friends) / 15.0,
+            len([f for f in self.sim.family_members if f.alive]) / max(1, len(self.sim.family_members)),
+            1.0 if self.sim.relationship_status == 'married' else 0.5 if self.sim.relationship_status == 'dating' else 0.0,
+            self.sim.relationship_satisfaction / 100.0 if self.sim.relationship_status != 'single' else 0.0,
+            len(self.sim.children) / 5.0,
+            
+            # Substances
+            self.sim.alcohol_dependency / 100.0,
+            self.sim.drug_dependency / 100.0,
+            1.0 if self.sim.smoking else 0.0,
+            1.0 if self.sim.in_recovery else 0.0,
+            
+            # Legal
+            len(self.sim.criminal_record) / 10.0,
+            1.0 if self.sim.probation else 0.0,
+            1.0 if self.sim.in_jail else 0.0,
+            
+            # Assets
+            1.0 if self.sim.car_working else 0.0,
+            1.0 if self.sim.license_suspended else 0.0,
+            1.0 if self.sim.has_health_insurance else 0.0,
+            1.0 if self.sim.therapy else 0.0,
+            1.0 if self.sim.medication else 0.0,
+            1.0 if self.sim.gym_membership else 0.0,
+            
+            # Life progress
+            len(self.sim.completed_goals) / 10.0,
+            len(self.sim.life_goals) / 10.0,
+            len(self.sim.hobbies) / 5.0,
+            len(self.sim.life_milestones) / 20.0,
+            
+            # New features
+            len(self.sim.pets) / 3.0,
+            1.0 if self.sim.owns_business else 0.0,
+            self.sim.fame_level / 100.0,
+            1.0 if self.sim.has_anxiety else 0.0,
+            1.0 if self.sim.has_depression else 0.0,
+            1.0 if self.sim.ptsd else 0.0,
+            self.sim.cooking_skill / 100.0,
+            self.sim.fitness_level / 100.0,
+            self.sim.creativity / 100.0,
+            self.sim.leadership / 100.0,
+            len(self.sim.countries_visited) / 20.0,
+            len(self.sim.languages_learned) / 5.0,
+            self.sim.books_read / 200.0,
+            self.sim.volunteer_hours / 500.0,
+            
+            # Time
+            (self.sim.day % 365) / 365.0,  # Time of year
+            self.sim.day / 7300.0,  # Total time (20 years max)
+        ]
+        
+        return np.array(state, dtype=np.float32)
+    
+    def step(self, action):
+        """
+        Execute action and return (next_state, reward, done, info)
+        
+        Actions (15 total):
+        0: Focus on physical health (exercise, diet)
+        1: Focus on mental health (therapy, meditation, self-care)
+        2: Work hard (career advancement, skill building)
+        3: Job search / Career change
+        4: Study / Pursue education
+        5: Save money / Invest conservatively
+        6: Aggressive investing / Risk-taking
+        7: Socialize / Build relationships
+        8: Focus on family (spouse, children)
+        9: Pursue hobbies / Personal interests
+        10: Seek treatment (addiction, health issues)
+        11: Reduce stress / Take break
+        12: Make major purchase / Lifestyle upgrade
+        13: Volunteer / Help others
+        14: Default / Minimal action (let life happen)
+        """
+        if not self.sim.alive:
+            return self.get_state(), 0, True, {'reason': 'already_dead'}
+        
+        # Apply action effects BEFORE daily routine
+        self._apply_action(action)
+        
+        # Run daily routine
+        self.sim.daily_routine()
+        
+        # Get results
+        next_state = self.get_state()
+        reward = self.sim.daily_rewards[-1] if self.sim.daily_rewards else 0
+        done = not self.sim.alive or self.sim.day >= 7300  # Max 20 years
+        
+        info = {
+            'day': self.sim.day,
+            'age': self.sim.age,
+            'cause_of_end': self.sim.cause_of_end if done else None,
+            'total_reward': self.sim.total_reward,
+            'net_worth': self.sim.money + self.sim.investments - self.sim.debt,
+            'happiness': self.sim.happiness,
+            'action_taken': action
+        }
+        
+        return next_state, reward, done, info
+    
+    def _apply_action(self, action):
+        """Apply the chosen action's effects"""
+        
+        if action == 0:  # Physical health focus
+            if self.sim.energy > 20:
+                self.sim.health += random.uniform(1.5, 4.0)
+                self.sim.weight -= random.uniform(0.4, 1.0)
+                self.sim.energy -= 25
+                self.sim.happiness += random.uniform(5, 12)
+                self.sim.stress -= random.uniform(5, 10)
+                self.sim.mental_health += random.uniform(1, 3)
+                
+        elif action == 1:  # Mental health focus
+            self.sim.mental_health += random.uniform(3, 8)
+            self.sim.happiness += random.uniform(4, 12)
+            self.sim.stress -= random.uniform(8, 18)
+            self.sim.energy += random.uniform(5, 15)
+            self.sim.money -= random.uniform(20, 100)
+            
+            if self.sim.mental_health < 40 and not self.sim.therapy:
+                if random.random() < 0.5:
+                    self.sim.therapy = True
+                    self.sim.log_event("Started therapy (action)")
+                    
+        elif action == 2:  # Work hard
+            if self.sim.has_job:
+                self.sim.job_stability += random.uniform(2, 5)
+                self.sim.skill_level += random.uniform(0.02, 0.08)
+                self.sim.energy -= 20
+                self.sim.stress += random.uniform(3, 8)
+                self.sim.job_satisfaction += random.uniform(0.5, 3)
+                
+                # Bonus income chance
+                if random.random() < 0.1:
+                    bonus = random.uniform(500, 3000)
+                    self.sim.money += bonus
+                    self.sim.happiness += 10
+            else:
+                self.sim.stress += 5
+                
+        elif action == 3:  # Job search / Career change
+            if not self.sim.has_job:
+                # Higher success rate when actively searching
+                if random.random() < 0.15:
+                    self.sim.has_job = True
+                    self.sim.monthly_income = self.sim.calculate_income()
+                    self.sim.job_stability = 75
+                    self.sim.job_satisfaction = random.uniform(60, 85)
+                    self.sim.log_event(f"Found job: {self.sim.job_title}")
+                    self.sim.happiness += 35
+            else:
+                # Career change
+                if random.random() < 0.05:
+                    old_income = self.sim.monthly_income
+                    self.sim.monthly_income = self.sim.calculate_income() * random.uniform(1.1, 1.4)
+                    self.sim.career_field = random.choice(list(CareerField))
+                    self.sim.log_event(f"Career change! Income: ${self.sim.monthly_income:.0f}")
+                    
+        elif action == 4:  # Study / Education
+            if not hasattr(self.sim, 'in_school'):
+                self.sim.in_school = False
+                
+            if not self.sim.in_school and self.sim.education_level != EducationLevel.PHD:
+                if self.sim.money > 5000 or random.random() < 0.3:
+                    # Start education
+                    if self.sim.education_level == EducationLevel.HIGH_SCHOOL:
+                        self.sim.target_degree = EducationLevel.BACHELORS
+                    elif self.sim.education_level == EducationLevel.BACHELORS:
+                        self.sim.target_degree = EducationLevel.MASTERS
+                    elif self.sim.education_level == EducationLevel.MASTERS:
+                        self.sim.target_degree = EducationLevel.PHD
+                    else:
+                        return
+                        
+                    self.sim.in_school = True
+                    self.sim.school_progress = 0
+                    loan = random.uniform(15000, 50000)
+                    self.sim.student_loan_debt += loan
+                    self.sim.log_event(f"Started {self.sim.target_degree.value} program")
+            else:
+                # Study harder
+                self.sim.skill_level += random.uniform(0.05, 0.15)
+                self.sim.energy -= 15
+                self.sim.stress += random.uniform(2, 6)
+                
+        elif action == 5:  # Save/Invest conservatively
+            if self.sim.money > 1000:
+                save_amount = self.sim.money * random.uniform(0.1, 0.25)
+                self.sim.money -= save_amount
+                
+                # Split between savings and investments
+                self.sim.investments += save_amount * 0.7
+                self.sim.has_retirement_savings += save_amount * 0.3
+                
+                self.sim.mental_health += 3
+                self.sim.stress -= 5
+                self.sim.investment_knowledge += 0.5
+                
+        elif action == 6:  # Aggressive investing
+            if self.sim.money > 2000:
+                invest_amount = self.sim.money * random.uniform(0.2, 0.5)
+                self.sim.money -= invest_amount
+                
+                # Risky investment
+                if random.random() < 0.6:  # Success
+                    gain = invest_amount * random.uniform(1.1, 2.0)
+                    self.sim.investments += gain
+                    self.sim.happiness += 15
+                    self.sim.log_event(f"Investment success: +${gain:.0f}")
+                else:  # Loss
+                    loss = invest_amount * random.uniform(0.3, 0.8)
+                    self.sim.investments += loss
+                    self.sim.stress += 15
+                    self.sim.happiness -= 10
+                    self.sim.log_event(f"Investment loss: -${invest_amount - loss:.0f}")
+                    
+                self.sim.investment_knowledge += 1.0
+                
+        elif action == 7:  # Socialize
+            self.sim.social_support += random.uniform(5, 15)
+            self.sim.happiness += random.uniform(8, 20)
+            self.sim.mental_health += random.uniform(3, 10)
+            self.sim.stress -= random.uniform(5, 12)
+            self.sim.energy -= 15
+            self.sim.money -= random.uniform(30, 150)
+            self.sim.reputation += random.uniform(1, 5)
+            
+            # Chance to make new friend
+            if random.random() < 0.2 and len(self.sim.ai_npcs) > 0:
+                npc = random.choice(self.sim.ai_npcs)
+                npc.relationship_type = 'friend'
+                self.sim.friends.append(npc)
+                self.sim.ai_npcs.remove(npc)
+                self.sim.log_event(f"Made new friend: {npc.name}")
+                
+            # Improve existing relationships
+            if len(self.sim.friends) > 0:
+                for friend in random.sample(self.sim.friends, min(3, len(self.sim.friends))):
+                    friend.relationship_quality += random.uniform(2, 8)
+                    
+        elif action == 8:  # Focus on family
+            if self.sim.relationship_status in ['married', 'dating']:
+                self.sim.relationship_satisfaction += random.uniform(3, 10)
+                self.sim.happiness += random.uniform(5, 15)
+                self.sim.social_support += random.uniform(3, 8)
+                self.sim.money -= random.uniform(50, 200)
+                
+            for child in self.sim.children:
+                if child.alive:
+                    child.health += random.uniform(1, 3)
+                    child.mental_health += random.uniform(2, 5)
+                    
+            self.sim.stress -= random.uniform(3, 10)
+            
+        elif action == 9:  # Hobbies
+            if len(self.sim.hobbies) > 0:
+                hobby_name = random.choice(list(self.sim.hobbies.keys()))
+                hobby = self.sim.hobbies[hobby_name]
+                
+                if self.sim.money > hobby.cost and self.sim.energy > 15:
+                    self.sim.money -= hobby.cost
+                    self.sim.energy -= 20
+                    self.sim.happiness += hobby.happiness_gain * 1.5
+                    self.sim.stress -= random.uniform(10, 20)
+                    self.sim.mental_health += random.uniform(3, 8)
+                    hobby.skill_level += hobby.skill_gain * 2
+                    
+                    # Better chance of earning from hobby
+                    if hobby.skill_level > 80:
+                        if random.random() < 0.15:
+                            earnings = random.uniform(500, 5000)
+                            self.sim.money += earnings
+                            self.sim.reputation += 5
+            else:
+                # Start a new hobby
+                if self.sim.money > 100:
+                    new_hobby_name = random.choice([h for h in HOBBIES.keys() if h not in self.sim.hobbies])
+                    self.sim.hobbies[new_hobby_name] = HOBBIES[new_hobby_name]
+                    self.sim.log_event(f"Started new hobby: {new_hobby_name}")
+                    
+        elif action == 10:  # Seek treatment
+            if self.sim.alcohol_dependency > 10 or self.sim.drug_dependency > 10:
+                if not self.sim.in_recovery:
+                    self.sim.in_recovery = True
+                    cost = random.uniform(5000, 15000)
+                    self.sim.money -= cost
+                    self.sim.log_event("Entered recovery program (action)")
+                    self.sim.mental_health += 10
+                    self.sim.happiness += 5
+                else:
+                    # Continue recovery
+                    self.sim.alcohol_dependency = max(0, self.sim.alcohol_dependency - 2.0)
+                    self.sim.drug_dependency = max(0, self.sim.drug_dependency - 2.0)
+                    self.sim.mental_health += 2
+                    
+            if len(self.sim.chronic_conditions) > 0 and not self.sim.medication:
+                self.sim.medication = True
+                self.sim.medication_cost_monthly = random.uniform(150, 600)
+                self.sim.log_event("Started medication (action)")
+                
+            if self.sim.mental_health < 50 and not self.sim.therapy:
+                self.sim.therapy = True
+                self.sim.log_event("Started therapy (action)")
+                
+        elif action == 11:  # Reduce stress / Take break
+            self.sim.stress -= random.uniform(15, 30)
+            self.sim.energy += random.uniform(20, 40)
+            self.sim.mental_health += random.uniform(5, 12)
+            self.sim.happiness += random.uniform(8, 18)
+            self.sim.money -= random.uniform(100, 500)
+            
+            if self.sim.has_job:
+                self.sim.job_satisfaction += random.uniform(2, 6)
+                
+        elif action == 12:  # Major purchase
+            if self.sim.money > 15000 and not self.sim.owns_home:
+                # Try to buy house
+                if self.sim.credit_score > 650 and random.random() < 0.3:
+                    down_payment = random.uniform(25000, 60000)
+                    if self.sim.money > down_payment:
+                        self.sim.home_value = down_payment * random.uniform(4, 7)
+                        self.sim.money -= down_payment
+                        self.sim.owns_home = True
+                        self.sim.mortgage_payment = self.sim.home_value * 0.004
+                        self.sim.rent = 0
+                        self.sim.happiness += 50
+                        self.sim.log_event(f"Bought house! (action)")
+                        
+            elif self.sim.money > 5000 and random.random() < 0.5:
+                # Other purchases
+                purchase_cost = random.uniform(2000, 8000)
+                self.sim.money -= purchase_cost
+                self.sim.happiness += random.uniform(15, 30)
+                self.sim.log_event(f"Major purchase: ${purchase_cost:.0f}")
+                
+        elif action == 13:  # Volunteer / Help others
+            self.sim.reputation += random.uniform(5, 15)
+            self.sim.happiness += random.uniform(10, 25)
+            self.sim.mental_health += random.uniform(5, 12)
+            self.sim.social_support += random.uniform(5, 12)
+            self.sim.energy -= 20
+            self.sim.money -= random.uniform(50, 200)
+            
+            # Chance to help family
+            if len(self.sim.family_members) > 0:
+                family_member = random.choice([f for f in self.sim.family_members if f.alive])
+                family_member.health += random.uniform(2, 8)
+                family_member.relationship_quality += random.uniform(5, 15)
+                
+        # Action 14 is "do nothing" - no effects
+        
+        # Clamp values after action
+        self.sim.health = max(0, min(100, self.sim.health))
+        self.sim.mental_health = max(0, min(100, self.sim.mental_health))
+        self.sim.happiness = max(0, min(100, self.sim.happiness))
+        self.sim.stress = max(0, min(100, self.sim.stress))
+        self.sim.energy = max(0, min(100, self.sim.energy))
+
+
+# ==================== DQN AGENT ====================
+
+class DQNAgent:
+    """Deep Q-Network with experience replay and target network"""
+    
+    def __init__(self, state_size=64, action_size=15, learning_rate=0.0005):
+        if not TF_AVAILABLE:
+            raise ImportError("TensorFlow required for training")
+        
+        self.state_size = state_size
+        self.action_size = action_size
+        self.memory = []
+        self.memory_size = 50000
+        self.gamma = 0.97  # Discount factor
+        self.epsilon = 1.0  # Exploration rate
+        self.epsilon_min = 0.01
+        self.epsilon_decay = 0.9975
+        self.learning_rate = learning_rate
+        self.batch_size = 128
+        self.update_target_every = 5
+        
+        # Build networks
+        self.model = self._build_model()
+        self.target_model = self._build_model()
+        self.update_target_model()
+        
+        # Training stats
+        self.training_step = 0
+        
+    def _build_model(self):
+        """Build deep neural network"""
+        model = models.Sequential([
+            layers.Input(shape=(self.state_size,)),
+            layers.Dense(256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+            layers.BatchNormalization(),
+            layers.Dropout(0.3),
+            layers.Dense(256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+            layers.BatchNormalization(),
+            layers.Dropout(0.3),
+            layers.Dense(128, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001)),
+            layers.BatchNormalization(),
+            layers.Dropout(0.2),
+            layers.Dense(128, activation='relu'),
+            layers.Dense(self.action_size, activation='linear')
+        ])
+        
+        model.compile(
+            optimizer=optimizers.Adam(learning_rate=self.learning_rate),
+            loss='huber'  # More stable than MSE
+        )
+        return model
+    
+    def update_target_model(self):
+        """Copy weights to target network"""
+        self.target_model.set_weights(self.model.get_weights())
+    
+    def remember(self, state, action, reward, next_state, done):
+        """Store experience in replay buffer"""
+        self.memory.append((state, action, reward, next_state, done))
+        if len(self.memory) > self.memory_size:
+            self.memory.pop(0)
+    
+    def act(self, state, training=True):
+        """Epsilon-greedy action selection"""
+        if training and np.random.rand() <= self.epsilon:
+            return random.randrange(self.action_size)
+        
+        state = np.reshape(state, [1, self.state_size])
+        q_values = self.model.predict(state, verbose=0)
+        return np.argmax(q_values[0])
+    
+    def replay(self):
+        """Train on batch from memory"""
+        if len(self.memory) < self.batch_size:
+            return 0, 0
+        
+        # Sample batch
+        batch = random.sample(self.memory, self.batch_size)
+        
+        states = np.array([exp[0] for exp in batch])
+        actions = np.array([exp[1] for exp in batch])
+        rewards = np.array([exp[2] for exp in batch])
+        next_states = np.array([exp[3] for exp in batch])
+        dones = np.array([exp[4] for exp in batch])
+        
+        # Double DQN: select action with main network, evaluate with target
+        current_q = self.model.predict(states, verbose=0)
+        next_q_main = self.model.predict(next_states, verbose=0)
+        next_q_target = self.target_model.predict(next_states, verbose=0)
+        
+        # Calculate targets
+        targets = current_q.copy()
+        for i in range(self.batch_size):
+            if dones[i]:
+                targets[i][actions[i]] = rewards[i]
+            else:
+                # Double DQN update
+                best_action = np.argmax(next_q_main[i])
+                targets[i][actions[i]] = rewards[i] + self.gamma * next_q_target[i][best_action]
+        
+        # Train
+        history = self.model.fit(states, targets, epochs=1, verbose=0, batch_size=self.batch_size)
+        loss = history.history['loss'][0]
+        
+        # Decay epsilon
+        if self.epsilon > self.epsilon_min:
+            self.epsilon *= self.epsilon_decay
+        
+        self.training_step += 1
+        
+        # Update target network periodically
+        if self.training_step % self.update_target_every == 0:
+            self.update_target_model()
+        
+        # Calculate average Q-value for monitoring
+        avg_q = np.mean(current_q)
+        
+        return loss, avg_q
+    
+    def save(self, filepath):
+        """Save model weights"""
+        self.model.save_weights(filepath)
+        print(f"Model saved to {filepath}")
+    
+    def load(self, filepath):
+        """Load model weights"""
+        self.model.load_weights(filepath)
+        self.update_target_model()
+        print(f"Model loaded from {filepath}")
+
+
+# ==================== TRAINING FUNCTION ====================
+
+def train_agent(episodes=200, max_days=3650, save_path='life_agent_v2.weights.h5', 
+                render_every=10, save_every=25):
+    """
+    Train DQN agent to make optimal life decisions
+    
+    Args:
+        episodes: Number of training episodes
+        max_days: Max days per episode (10 years default)
+        save_path: Where to save model weights
+        render_every: Print progress every N episodes
+        save_every: Save model every N episodes
+    """
+    if not TF_AVAILABLE:
+        print("TensorFlow not available. Cannot train agent.")
+        return None
+    
+    env = LifeEnvironment()
+    agent = DQNAgent(state_size=64, action_size=15)
+    
+    # Tracking
+    rewards_history = []
+    days_survived_history = []
+    losses = []
+    avg_q_values = []
+    net_worth_history = []
+    happiness_history = []
+    
+    print(f"\n{'='*80}")
+    print(f"TRAINING DQN AGENT - {episodes} EPISODES")
+    print(f"State Size: {agent.state_size} | Action Size: {agent.action_size}")
+    print(f"{'='*80}\n")
+    
+    best_reward = -float('inf')
+    best_episode = 0
+    
+    for episode in range(episodes):
+        state = env.reset()
+        total_reward = 0
+        episode_losses = []
+        episode_q_values = []
+        day = 0
+        
+        for day in range(max_days):
+            # Choose action
+            action = agent.act(state, training=True)
+            
+            # Take step
+            next_state, reward, done, info = env.step(action)
+            
+            # Store experience
+            agent.remember(state, action, reward, next_state, done)
+            
+            # Train
+            if len(agent.memory) >= agent.batch_size:
+                loss, avg_q = agent.replay()
+                episode_losses.append(loss)
+                episode_q_values.append(avg_q)
+            
+            state = next_state
+            total_reward += reward
+            
+            if done:
+                break
+        
+        # Track metrics
+        rewards_history.append(total_reward)
+        days_survived_history.append(day)
+        if episode_losses:
+            losses.extend(episode_losses)
+            avg_q_values.extend(episode_q_values)
+        
+        net_worth_history.append(info.get('net_worth', 0))
+        happiness_history.append(info.get('happiness', 0))
+        
+        # Track best performance
+        if total_reward > best_reward:
+            best_reward = total_reward
+            best_episode = episode
+        
+        # Print progress
+        if episode % render_every == 0 or episode == episodes - 1:
+            avg_reward = np.mean(rewards_history[-render_every:])
+            avg_days = np.mean(days_survived_history[-render_every:])
+            avg_loss = np.mean(episode_losses) if episode_losses else 0
+            avg_q = np.mean(episode_q_values) if episode_q_values else 0
+            avg_net_worth = np.mean(net_worth_history[-render_every:])
+            
+            print(f"Ep {episode:4d}/{episodes} | "
+                  f"Days: {day:4d} | "
+                  f"Reward: {total_reward:7.1f} | "
+                  f"Avg-{render_every}: {avg_reward:7.1f} | "
+                  f"NetWorth: ${avg_net_worth:8.0f} | "
+                  f"Loss: {avg_loss:.4f} | "
+                  f"Q: {avg_q:6.2f} | "
+                  f"ε: {agent.epsilon:.3f}")
+        
+        # Save model periodically
+        if episode > 0 and episode % save_every == 0:
+            agent.save(save_path)
+    
+    # Final save
+    agent.save(save_path)
+    
+    print(f"\n{'='*80}")
+    print(f"TRAINING COMPLETE")
+    print(f"Best Episode: {best_episode} with reward: {best_reward:.1f}")
+    print(f"Final Epsilon: {agent.epsilon:.3f}")
+    print(f"{'='*80}\n")
+    
+    # Plot training results
+    plot_training_results(rewards_history, days_survived_history, losses, 
+                          avg_q_values, net_worth_history, happiness_history)
+    
+    return agent
+
+
+def plot_training_results(rewards, days, losses, q_values, net_worths, happiness):
+    """Plot comprehensive training metrics"""
+    fig, axes = plt.subplots(3, 2, figsize=(16, 12))
+    fig.suptitle('DQN Training Results', fontsize=16, fontweight='bold')
+    
+    # Rewards
+    axes[0,0].plot(rewards, alpha=0.6, label='Episode Reward')
+    if len(rewards) >= 10:
+        window = min(20, len(rewards))
+        ma = [np.mean(rewards[max(0, i-window):i+1]) for i in range(len(rewards))]
+        axes[0,0].plot(ma, linewidth=2, label=f'MA-{window}')
+    axes[0,0].set_title('Total Reward per Episode')
+    axes[0,0].set_xlabel('Episode')
+    axes[0,0].set_ylabel('Total Reward')
+    axes[0,0].legend()
+    axes[0,0].grid(True, alpha=0.3)
+    
+    # Days survived
+    axes[0,1].plot(days, alpha=0.6, color='green', label='Days Survived')
+    if len(days) >= 10:
+        window = min(20, len(days))
+        ma = [np.mean(days[max(0, i-window):i+1]) for i in range(len(days))]
+        axes[0,1].plot(ma, linewidth=2, color='darkgreen', label=f'MA-{window}')
+    axes[0,1].set_title('Days Survived per Episode')
+    axes[0,1].set_xlabel('Episode')
+    axes[0,1].set_ylabel('Days')
+    axes[0,1].legend()
+    axes[0,1].grid(True, alpha=0.3)
+    
+    # Training loss
+    if losses:
+        axes[1,0].plot(losses, alpha=0.4)
+        if len(losses) >= 100:
+            window = 100
+            ma = [np.mean(losses[max(0, i-window):i+1]) for i in range(len(losses))]
+            axes[1,0].plot(ma, linewidth=2, color='red')
+        axes[1,0].set_title('Training Loss (Huber)')
+        axes[1,0].set_xlabel('Training Step')
+        axes[1,0].set_ylabel('Loss')
+        axes[1,0].set_yscale('log')
+        axes[1,0].grid(True, alpha=0.3)
+    
+    # Average Q-values
+    if q_values:
+        axes[1,1].plot(q_values, alpha=0.4)
+        if len(q_values) >= 100:
+            window = 100
+            ma = [np.mean(q_values[max(0, i-window):i+1]) for i in range(len(q_values))]
+            axes[1,1].plot(ma, linewidth=2, color='blue')
+        axes[1,1].set_title('Average Q-Value')
+        axes[1,1].set_xlabel('Training Step')
+        axes[1,1].set_ylabel('Q-Value')
+        axes[1,1].grid(True, alpha=0.3)
+    
+    # Net worth over episodes
+    axes[2,0].plot(net_worths, alpha=0.6, color='purple', label='Final Net Worth')
+    if len(net_worths) >= 10:
+        window = min(20, len(net_worths))
+        ma = [np.mean(net_worths[max(0, i-window):i+1]) for i in range(len(net_worths))]
+        axes[2,0].plot(ma, linewidth=2, color='darkviolet', label=f'MA-{window}')
+    axes[2,0].set_title('Net Worth at Episode End')
+    axes[2,0].set_xlabel('Episode')
+    axes[2,0].set_ylabel('Net Worth ($)')
+    axes[2,0].legend()
+    axes[2,0].grid(True, alpha=0.3)
+    
+    # Happiness over episodes
+    axes[2,1].plot(happiness, alpha=0.6, color='orange', label='Final Happiness')
+    if len(happiness) >= 10:
+        window = min(20, len(happiness))
+        ma = [np.mean(happiness[max(0, i-window):i+1]) for i in range(len(happiness))]
+        axes[2,1].plot(ma, linewidth=2, color='darkorange', label=f'MA-{window}')
+    axes[2,1].set_title('Happiness at Episode End')
+    axes[2,1].set_xlabel('Episode')
+    axes[2,1].set_ylabel('Happiness')
+    axes[2,1].legend()
+    axes[2,1].grid(True, alpha=0.3)
+    
+    plt.tight_layout()
+    plt.savefig('/home/claude/training_results.png', dpi=150, bbox_inches='tight')
+    plt.show()
+
+
+def evaluate_agent(agent, episodes=10, render=True, max_days=3650):
+    """Evaluate trained agent performance"""
+    env = LifeEnvironment()
+    
+    results = []
+    
+    print(f"\n{'='*80}")
+    print(f"EVALUATING TRAINED AGENT - {episodes} EPISODES")
+    print(f"{'='*80}\n")
+    
+    for episode in range(episodes):
+        state = env.reset()
+        total_reward = 0
+        
+        # Greedy policy (no exploration)
+        old_epsilon = agent.epsilon
+        agent.epsilon = 0
+        
+        action_counts = defaultdict(int)
+        
+        for day in range(max_days):
+            action = agent.act(state, training=False)
+            action_counts[action] += 1
+            
+            next_state, reward, done, info = env.step(action)
+            state = next_state
+            total_reward += reward
+            
+            if done:
+                break
+        
+        agent.epsilon = old_epsilon
+        
+        result = {
+            'episode': episode + 1,
+            'days': day,
+            'reward': total_reward,
+            'net_worth': info['net_worth'],
+            'happiness': info['happiness'],
+            'alive': env.sim.alive,
+            'cause': info['cause_of_end'],
+            'action_distribution': dict(action_counts)
+        }
+        results.append(result)
+        
+        if render:
+            print(f"Episode {episode+1:2d}: Days={day:4d} | "
+                  f"Reward={total_reward:7.1f} | "
+                  f"NetWorth=${info['net_worth']:8.0f} | "
+                  f"Happy={info['happiness']:5.1f} | "
+                  f"Status={'Alive' if env.sim.alive else info['cause_of_end']}")
+    
+    # Summary statistics
+    print(f"\n{'='*80}")
+    print(f"EVALUATION SUMMARY")
+    print(f"{'='*80}")
+    print(f"Avg Reward: {np.mean([r['reward'] for r in results]):7.1f} "
+          f"± {np.std([r['reward'] for r in results]):6.1f}")
+    print(f"Avg Days: {np.mean([r['days'] for r in results]):6.1f} "
+          f"± {np.std([r['days'] for r in results]):5.1f}")
+    print(f"Avg Net Worth: ${np.mean([r['net_worth'] for r in results]):8.0f} "
+          f"± ${np.std([r['net_worth'] for r in results]):7.0f}")
+    print(f"Avg Happiness: {np.mean([r['happiness'] for r in results]):5.1f} "
+          f"± {np.std([r['happiness'] for r in results]):4.1f}")
+    print(f"Survival Rate: {sum(1 for r in results if r['alive']) / len(results) * 100:.1f}%")
+    
+    # Action distribution
+    all_actions = defaultdict(int)
+    for r in results:
+        for action, count in r['action_distribution'].items():
+            all_actions[action] += count
+    
+    print(f"\nAction Distribution:")
+    action_names = [
+        "Physical Health", "Mental Health", "Work Hard", "Job Search",
+        "Study", "Save/Invest", "Risky Invest", "Socialize",
+        "Family", "Hobbies", "Treatment", "Reduce Stress",
+        "Major Purchase", "Volunteer", "Default"
+    ]
+    total_actions = sum(all_actions.values())
+    for action in range(15):
+        pct = all_actions[action] / total_actions * 100 if total_actions > 0 else 0
+        print(f"  {action:2d}. {action_names[action]:15s}: {pct:5.1f}%")
+    
+    print(f"{'='*80}\n")
+    
+    return results
+
+
+def compare_trained_vs_random(trained_agent, episodes=20):
+    """Compare trained agent vs random baseline"""
+    print(f"\n{'='*80}")
+    print(f"COMPARISON: TRAINED AGENT VS RANDOM BASELINE")
+    print(f"{'='*80}\n")
+    
+    # Test trained agent
+    print("Testing TRAINED agent...")
+    trained_results = evaluate_agent(trained_agent, episodes=episodes, render=False)
+    
+    # Create random agent
+    class RandomAgent:
+        def __init__(self, action_size=15):
+            self.action_size = action_size
+            self.epsilon = 0
+        def act(self, state, training=False):
+            return random.randrange(self.action_size)
+    
+    print("\nTesting RANDOM baseline...")
+    random_results = evaluate_agent(RandomAgent(), episodes=episodes, render=False)
+    
+    # Compare
+    print(f"\n{'='*80}")
+    print(f"COMPARISON RESULTS")
+    print(f"{'='*80}")
+    print(f"{'Metric':<20} {'Trained':<15} {'Random':<15} {'Improvement':<15}")
+    print(f"{'-'*80}")
+    
+    metrics = [
+        ('Avg Reward', 'reward'),
+        ('Avg Days', 'days'),
+        ('Avg Net Worth', 'net_worth'),
+        ('Avg Happiness', 'happiness'),
+    ]
+    
+    for name, key in metrics:
+        trained_avg = np.mean([r[key] for r in trained_results])
+        random_avg = np.mean([r[key] for r in random_results])
+        improvement = (trained_avg - random_avg) / abs(random_avg) * 100 if random_avg != 0 else 0
+        
+        if key == 'net_worth':
+            print(f"{name:<20} ${trained_avg:<14.0f} ${random_avg:<14.0f} {improvement:+.1f}%")
+        else:
+            print(f"{name:<20} {trained_avg:<15.1f} {random_avg:<15.1f} {improvement:+.1f}%")
+    
+    trained_survival = sum(1 for r in trained_results if r['alive']) / len(trained_results) * 100
+    random_survival = sum(1 for r in random_results if r['alive']) / len(random_results) * 100
+    
+    print(f"{'Survival Rate':<20} {trained_survival:<15.1f}% {random_survival:<15.1f}% "
+          f"{trained_survival - random_survival:+.1f}pp")
+    print(f"{'='*80}\n")
+
+
+if __name__ == "__main__":
+    import sys
+    
+    print("\n" + "="*80)
+    print("ENHANCED LIFE SIMULATION WITH DEEP REINFORCEMENT LEARNING")
+    print("="*80)
+    print("\nOptions:")
+    print("1. Run single simulation (no training)")
+    print("2. Train RL agent")
+    print("3. Evaluate trained agent")
+    print("4. Compare trained vs random")
+    print("="*80)
+    
+    choice = input("\nEnter choice (1-4, default=1): ").strip() or "1"
+    
+    if choice == "1":
+        print("\nRunning single simulation...")
+        sim, df = run_simulation(days=3650, seed=None, verbose=False)
+        
+    elif choice == "2":
+        episodes = int(input("Enter number of episodes (default=200): ").strip() or "200")
+        print(f"\nTraining agent for {episodes} episodes...")
+        agent = train_agent(episodes=episodes, max_days=3650, save_path='life_agent_v2.weights.h5')
+        
+        # Evaluate after training
+        if input("\nEvaluate trained agent? (y/n, default=y): ").strip().lower() != 'n':
+            evaluate_agent(agent, episodes=10, render=True)
+            
+    elif choice == "3":
+        model_path = input("Enter model path (default=life_agent_v2.weights.h5): ").strip() or "life_agent_v2.weights.h5"
+        try:
+            agent = DQNAgent(state_size=64, action_size=15)
+            agent.load(model_path)
+            evaluate_agent(agent, episodes=10, render=True)
+        except Exception as e:
+            print(f"Error loading model: {e}")
+            
+    elif choice == "4":
+        model_path = input("Enter model path (default=life_agent_v2.weights.h5): ").strip() or "life_agent_v2.weights.h5"
+        try:
+            agent = DQNAgent(state_size=64, action_size=15)
+            agent.load(model_path)
+            compare_trained_vs_random(agent, episodes=20)
+        except Exception as e:
+            print(f"Error loading model: {e}")
