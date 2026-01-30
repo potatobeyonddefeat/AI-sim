@@ -1,0 +1,1 @@
+This is purely a test file to test my Git CLI. Ignore this file. 
